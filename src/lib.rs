@@ -8,3 +8,6 @@ pub use led::Led;
 
 mod button;
 pub use button::Button;
+
+mod heater;
+pub use heater::Heater;

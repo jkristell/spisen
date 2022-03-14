@@ -2,18 +2,26 @@
 #![no_std]
 
 use defmt_rtt as _;
+use hal::gpio::{Input, PullUp, PA0};
 use panic_probe as _;
-
 use stm32f4xx_hal as hal;
-
-use hal::{
-        gpio::{Input, Pin, PullUp}, 
-    };
-
+use stm32f4xx_hal::{
+    gpio::{Alternate, NoPin, PushPull, PB13, PB15},
+    pac::SPI2,
+    spi::{Spi, TransferModeNormal},
+};
 
 // A0 on the nucleo
-type DoorPin = Pin<Input<PullUp>, 'A', 0>;
-
+type DoorPin = PA0<Input<PullUp>>;
+type HeaterSpi = Spi<
+    SPI2,
+    (
+        PB13<Alternate<PushPull, 5>>,
+        NoPin,
+        PB15<Alternate<PushPull, 5>>,
+    ),
+    TransferModeNormal,
+>;
 
 pub struct OvenDoor {
     /// Default closed    
@@ -21,11 +29,8 @@ pub struct OvenDoor {
 }
 
 impl OvenDoor {
-
     pub fn new(pin: DoorPin) -> Self {
-        OvenDoor {
-            pin
-        }
+        OvenDoor { pin }
     }
 
     pub fn is_open(&self) -> bool {
@@ -33,19 +38,19 @@ impl OvenDoor {
     }
 }
 
-
 #[rtic::app(device = stm32f4xx_hal::pac, peripherals = true, dispatchers = [USART1])]
 mod app {
 
-    use super::OvenDoor;
-
+    use spisen::{Heater, Led};
     use stm32f4xx_hal::{
-            gpio::{Edge}, 
-            timer::MonoTimerUs,
-            pac,
-            prelude::*
-        };
-    use spisen::Led;
+        gpio::{Edge, NoPin},
+        pac,
+        prelude::*,
+        spi::Spi,
+        timer::{DelayUs, MonoTimerUs},
+    };
+
+    use super::{HeaterSpi, OvenDoor};
 
     #[monotonic(binds = TIM2, default = true)]
     type MicrosecMono = MonoTimerUs<pac::TIM2>;
@@ -58,6 +63,8 @@ mod app {
     #[local]
     struct Local {
         led: Led,
+        heater: Heater<HeaterSpi>,
+        delay: DelayUs<pac::TIM5>,
     }
 
     #[init]
@@ -72,23 +79,49 @@ mod app {
         let mut syscfg = device.SYSCFG.constrain();
 
         let gpioa = device.GPIOA.split();
+        let gpiob = device.GPIOB.split();
 
+        let mono = device.TIM2.monotonic_us(&clocks);
 
         let mut pin = gpioa.pa0.into_pull_up_input();
         pin.enable_interrupt(&mut device.EXTI);
         pin.make_interrupt_source(&mut syscfg);
         pin.trigger_on_edge(&mut device.EXTI, Edge::RisingFalling);
 
+        // Setup the Oven door
         let door = OvenDoor::new(pin);
 
-        let mono = device.TIM2.monotonic_us(&clocks);
+        // Setup the Oven heater (Neopixel array)
 
-        // Setup the led
+        // Configure pins for SPI
+        let mosi = gpiob.pb15.into_alternate().internal_pull_up(true);
+        let sck = gpiob.pb13.into_alternate();
+
+        let miso1 = NoPin; // miso not needed
+
+        // SPI1 with 3Mhz
+        let spi = Spi::new(
+            device.SPI2,
+            (sck, miso1, mosi),
+            ws2812_spi::MODE,
+            3_000_000.Hz(),
+            &clocks,
+        );
+
+        let heater = Heater::new(spi);
+
+        let delay = device.TIM5.delay_us(&clocks);
+
+        // Setup the debug led
         let led = Led::new(gpioa.pa5);
 
         defmt::info!("init done: is_open: {}", door.is_open());
 
-        (Resources { door }, Local { led }, init::Monotonics(mono))
+        (
+            Resources { door },
+            Local { led, heater, delay },
+            init::Monotonics(mono),
+        )
     }
 
     #[idle]
@@ -98,8 +131,8 @@ mod app {
     }
 
     #[task(
-        binds = EXTI0, 
-        shared = [door],
+        binds = EXTI0,
+        shared = [door]
     )]
     fn on_door_event(ctx: on_door_event::Context) {
         let mut door = ctx.shared.door;
@@ -128,5 +161,15 @@ mod app {
         defmt::info!("Oven door open: {}", open);
 
         led.set(open)
+    }
+
+    #[task(
+        local = [heater, delay],
+    )]
+    fn run_oven(ctx: run_oven::Context) {
+        let heater = ctx.local.heater;
+        let delay = ctx.local.delay;
+
+        heater.rainbow(delay);
     }
 }
