@@ -7,7 +7,7 @@ mod led;
 pub use led::Led;
 
 pub mod door;
-pub use door::{OvenDoor, DoorState};
+pub use door::{DoorState, OvenDoor};
 
 mod heater;
 pub use heater::Heater;

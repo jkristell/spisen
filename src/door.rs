@@ -1,15 +1,11 @@
-
 use embedded_hal::digital::v2::InputPin;
 
-
-
-pub struct OvenDoor<Pin> 
-{
+pub struct OvenDoor<Pin> {
     /// Default closed    
     pin: Pin,
 }
 
-impl<Pin> OvenDoor<Pin> 
+impl<Pin> OvenDoor<Pin>
 where
     Pin: InputPin,
 {
@@ -37,5 +33,5 @@ where
 #[derive(Debug, defmt::Format)]
 pub enum DoorState {
     Open,
-    Closed
+    Closed,
 }

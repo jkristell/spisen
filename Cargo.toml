@@ -4,6 +4,12 @@ name = "spisen"
 version = "0.0.1"
 edition = "2018"
 
+[features]
+default = ["nucleo"]
+nucleo = ["stm32f4xx-hal/stm32f401"]
+feather = ["stm32f4xx-hal/stm32f405"]
+
+
 [dependencies]
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
