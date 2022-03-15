@@ -9,6 +9,8 @@ use stm32f4xx_hal::{
     gpio::{Alternate, NoPin, PushPull, PB13, PB15},
     pac::SPI2,
     spi::{Spi, TransferModeNormal},
+    timer::DelayUs,
+    pac,
 };
 
 // A0 on the nucleo
@@ -22,49 +24,36 @@ type HeaterSpi = Spi<
     ),
     TransferModeNormal,
 >;
+type UsDelay = DelayUs<pac::TIM5>;
 
-pub struct OvenDoor {
-    /// Default closed    
-    pin: DoorPin,
-}
-
-impl OvenDoor {
-    pub fn new(pin: DoorPin) -> Self {
-        OvenDoor { pin }
-    }
-
-    pub fn is_open(&self) -> bool {
-        self.pin.is_low()
-    }
-}
 
 #[rtic::app(device = stm32f4xx_hal::pac, peripherals = true, dispatchers = [USART1])]
 mod app {
 
-    use spisen::{Heater, Led};
+    use spisen::{Heater, Led, OvenDoor};
     use stm32f4xx_hal::{
         gpio::{Edge, NoPin},
         pac,
         prelude::*,
         spi::Spi,
-        timer::{DelayUs, MonoTimerUs},
+        timer::{MonoTimerUs},
     };
 
-    use super::{HeaterSpi, OvenDoor};
+    use super::{HeaterSpi, UsDelay, DoorPin};
 
     #[monotonic(binds = TIM2, default = true)]
     type MicrosecMono = MonoTimerUs<pac::TIM2>;
 
     #[shared]
     struct Resources {
-        door: OvenDoor,
+        door: OvenDoor<DoorPin>,
     }
 
     #[local]
     struct Local {
         led: Led,
         heater: Heater<HeaterSpi>,
-        delay: DelayUs<pac::TIM5>,
+        delay: UsDelay,
     }
 
     #[init]
@@ -146,7 +135,7 @@ mod app {
         };
 
         // Clear the interrupt
-        door.lock(|b| b.pin.clear_interrupt_pending_bit());
+        door.lock(|d| d.pin_mut().clear_interrupt_pending_bit());
     }
 
     #[task(
