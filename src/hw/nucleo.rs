@@ -1,4 +1,3 @@
-use spisen::Led;
 use stm32f4xx_hal::{
     gpio::{Alternate, Edge, Input, NoPin, PullUp, PushPull, PA0, PB13, PB15},
     pac,
@@ -24,7 +23,7 @@ pub type MonotonicTim = pac::TIM2;
 
 pub fn setup_hw(
     mut device: pac::Peripherals,
-) -> (DoorPin, HeaterSpi, UsDelay, Led, MonoTimerUs<MonotonicTim>) {
+) -> (DoorPin, HeaterSpi, UsDelay, MonoTimerUs<MonotonicTim>) {
     // Setup the system clock
     let rcc = device.RCC.constrain();
     let clocks = rcc.cfgr.sysclk(84.MHz()).freeze();
@@ -56,8 +55,6 @@ pub fn setup_hw(
     let mono = device.TIM2.monotonic_us(&clocks);
 
     let delay = device.TIM5.delay_us(&clocks);
-    // Setup the debug led
-    let led = Led::new(gpioa.pa5);
 
-    (pin, spi, delay, led, mono)
+    (pin, spi, delay, mono)
 }

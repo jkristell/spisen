@@ -9,7 +9,7 @@ use hw::*;
 
 #[rtic::app(device = stm32f4xx_hal::pac, peripherals = true, dispatchers = [USART1])]
 mod app {
-    use spisen::{Heater, Led, OvenDoor};
+    use spisen::{Heater, OvenDoor};
     use stm32f4xx_hal::{
         gpio::ExtiPin,
         timer::{ExtU32, MonoTimerUs},
@@ -27,7 +27,6 @@ mod app {
 
     #[local]
     struct Local {
-        led: Led,
         heater: Heater<HeaterSpi>,
         delay: UsDelay,
     }
@@ -37,7 +36,7 @@ mod app {
         // Device specific peripherals
         let device = ctx.device;
 
-        let (pin, spi, delay, led, mono) = super::setup_hw(device);
+        let (pin, spi, delay, mono) = super::setup_hw(device);
 
         // Setup the Oven door
         let door = OvenDoor::new(pin);
@@ -49,7 +48,7 @@ mod app {
 
         (
             Resources { door },
-            Local { led, heater, delay },
+            Local { heater, delay },
             init::Monotonics(mono),
         )
     }
@@ -82,15 +81,11 @@ mod app {
     #[task(
         capacity = 1,
         shared = [door],
-        local = [led]
     )]
     fn check_door(mut ctx: check_door::Context) {
-        let led = ctx.local.led;
         let open = ctx.shared.door.lock(|p| p.is_open());
 
         defmt::info!("Oven door open: {}", open);
-
-        led.set(open)
     }
 
     #[task(

@@ -25,9 +25,6 @@ pub fn exit() -> ! {
     }
 }
 
-mod led;
-pub use led::Led;
-
 pub mod door;
 pub use door::{DoorState, OvenDoor};
 
