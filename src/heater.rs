@@ -9,6 +9,8 @@ use ws2812_spi::Ws2812;
 /// Heater element
 pub struct Heater<Spi> {
     ws: Ws2812<Spi>,
+    run: bool,
+    step: usize,
 }
 
 impl<Spi> Heater<Spi>
@@ -19,13 +21,50 @@ where
     pub fn new(spi: Spi) -> Self {
         Heater {
             ws: Ws2812::new(spi),
+            run: false,
+            step: 0,
         }
     }
 
-    pub fn rainbow(&mut self, delay: &mut impl DelayMs<u8>) {
+    pub fn enable(&mut self, enable: bool) {
+        self.run = enable;
+    }
+
+    pub fn rainbow(&mut self) {
         const LED_NUM: usize = 8;
         let mut data = [RGB8::default(); LED_NUM];
 
+        if !self.run {
+
+            self.ws.write(gamma(data.iter().cloned())).unwrap();
+
+            return;
+        }
+
+        let j = self.step;
+
+        self.step += 1;
+
+        if self.step == 1024 {
+            self.step = 0;
+            self.run = false;
+        }
+
+
+        for i in 0..LED_NUM {
+            // rainbow cycle using HSV, where hue goes through all colors in circle
+            // value sets the brightness
+            let hsv = Hsv {
+                hue: ((i * 3 + j) % 256) as u8,
+                sat: 255,
+                val: 100,
+            };
+
+            data[i] = hsv2rgb(hsv);
+        }
+        self.ws.write(gamma(data.iter().cloned())).unwrap();
+
+        /*
         loop {
             for j in 0..256 {
                 for i in 0..LED_NUM {
@@ -44,5 +83,7 @@ where
                 delay.delay_ms(10u8);
             }
         }
+
+         */
     }
 }

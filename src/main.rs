@@ -9,7 +9,7 @@ use hw::*;
 
 #[rtic::app(device = stm32f4xx_hal::pac, peripherals = true, dispatchers = [USART1])]
 mod app {
-    use spisen::{Heater, OvenDoor};
+    use spisen::{door, Heater, OvenDoor};
     use stm32f4xx_hal::{
         gpio::ExtiPin,
         timer::{ExtU32, MonoTimerUs},
@@ -23,11 +23,11 @@ mod app {
     #[shared]
     struct Resources {
         door: OvenDoor<DoorPin>,
+        heater: Heater<HeaterSpi>,
     }
 
     #[local]
     struct Local {
-        heater: Heater<HeaterSpi>,
         delay: UsDelay,
     }
 
@@ -46,9 +46,11 @@ mod app {
 
         defmt::info!("init done: Door state: {:?}", door.state());
 
+        run_oven::spawn().unwrap();
+
         (
-            Resources { door },
-            Local { heater, delay },
+            Resources { door, heater },
+            Local { delay },
             init::Monotonics(mono),
         )
     }
@@ -66,35 +68,43 @@ mod app {
     fn on_door_event(ctx: on_door_event::Context) {
         let mut door = ctx.shared.door;
 
-        match check_door::spawn_after(1.secs()) {
-            Ok(handle) => Some(handle),
-            Err(_err) => {
-                defmt::info!("Door check already spawned");
-                None
-            }
-        };
+        let _ = check_door::spawn_after(100.millis());
 
         // Clear the interrupt
         door.lock(|d| d.pin_mut().clear_interrupt_pending_bit());
     }
 
     #[task(
-        capacity = 1,
-        shared = [door],
+        shared = [door, heater],
     )]
     fn check_door(mut ctx: check_door::Context) {
-        let open = ctx.shared.door.lock(|p| p.is_open());
+        let state = ctx.shared.door.lock(|p| p.state());
+        let mut heater = ctx.shared.heater;
 
-        defmt::info!("Oven door open: {}", open);
+        let _ = match state {
+            door::State::Open => {
+                heater.lock(|h| h.enable(false));
+                //run_oven::spawn()
+            },
+            door::State::Closed => {
+                heater.lock(|h| h.enable(true));
+
+                //run_oven::spawn()
+            },
+        };
+
+        defmt::info!("Door state: {:?}", state);
     }
 
     #[task(
-        local = [heater, delay],
+        local = [delay],
+        shared = [heater]
     )]
     fn run_oven(ctx: run_oven::Context) {
-        let heater = ctx.local.heater;
-        let delay = ctx.local.delay;
+        let mut heater = ctx.shared.heater;
 
-        heater.rainbow(delay);
+        heater.lock(|h| h.rainbow());
+
+        run_oven::spawn_after(10.millis());
     }
 }

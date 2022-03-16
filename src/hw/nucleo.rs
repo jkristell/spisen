@@ -1,7 +1,7 @@
 use stm32f4xx_hal::{
-    gpio::{Alternate, Edge, Input, NoPin, PullUp, PushPull, PA0, PB13, PB15},
+    gpio::{Alternate, Edge, Input, NoPin, PullUp, PushPull, PA0, PA5, PA7},
     pac,
-    pac::SPI2,
+    pac::SPI1,
     prelude::*,
     spi::{Spi, TransferModeNormal},
     timer::{DelayUs, MonoTimerUs},
@@ -9,12 +9,14 @@ use stm32f4xx_hal::{
 
 // A0 on the nucleo
 pub type DoorPin = PA0<Input<PullUp>>;
+
+//
 pub type HeaterSpi = Spi<
-    SPI2,
+    SPI1,
     (
-        PB13<Alternate<PushPull, 5>>,
+        PA5<Alternate<PushPull, 5>>,
         NoPin,
-        PB15<Alternate<PushPull, 5>>,
+        PA7<Alternate<PushPull, 5>>,
     ),
     TransferModeNormal,
 >;
@@ -30,7 +32,6 @@ pub fn setup_hw(
 
     let mut syscfg = device.SYSCFG.constrain();
     let gpioa = device.GPIOA.split();
-    let gpiob = device.GPIOB.split();
 
     let mut pin = gpioa.pa0.into_pull_up_input();
     pin.enable_interrupt(&mut device.EXTI);
@@ -38,15 +39,14 @@ pub fn setup_hw(
     pin.trigger_on_edge(&mut device.EXTI, Edge::RisingFalling);
 
     // Configure pins for SPI
-    let mosi = gpiob.pb15.into_alternate().internal_pull_up(true);
-    let sck = gpiob.pb13.into_alternate();
-
-    let miso1 = NoPin; // miso not needed
+    let sclk = gpioa.pa5.into_alternate();
+    let miso = NoPin; // miso not needed
+    let mosi = gpioa.pa7.into_alternate().internal_pull_up(true);
 
     // SPI1 with 3Mhz
     let spi = Spi::new(
-        device.SPI2,
-        (sck, miso1, mosi),
+        device.SPI1,
+        (sclk, miso, mosi),
         ws2812_spi::MODE,
         3_000_000.Hz(),
         &clocks,

@@ -26,7 +26,7 @@ pub fn exit() -> ! {
 }
 
 pub mod door;
-pub use door::{DoorState, OvenDoor};
+pub use door::{OvenDoor};
 
 mod heater;
 pub use heater::Heater;

@@ -13,11 +13,11 @@ where
         OvenDoor { pin }
     }
 
-    pub fn state(&self) -> DoorState {
+    pub fn state(&self) -> State {
         if self.is_open() {
-            DoorState::Open
+            State::Open
         } else {
-            DoorState::Closed
+            State::Closed
         }
     }
 
@@ -31,7 +31,7 @@ where
 }
 
 #[derive(Debug, defmt::Format)]
-pub enum DoorState {
+pub enum State {
     Open,
     Closed,
 }
