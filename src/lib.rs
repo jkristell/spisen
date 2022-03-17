@@ -2,8 +2,11 @@
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-pub use hal::pac;
+use defmt_rtt as _;
+use panic_probe as _;
+
 pub use stm32f4xx_hal as hal;
+pub use hal::pac;
 
 #[defmt::panic_handler]
 fn panic() -> ! {
