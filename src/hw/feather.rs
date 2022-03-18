@@ -4,14 +4,14 @@ use feather_f405::{
         prelude::*,
     }
 };
-use feather_f405::pins::{A0, all_pins, MO, SCK};
+use feather_f405::pins::{G5, pins, MO, SCK};
 use stm32f4xx_hal::gpio::{Alternate, Edge, Input, NoPin, PullUp, PushPull};
 use stm32f4xx_hal::spi::{Spi, TransferModeNormal};
 use stm32f4xx_hal::timer::MonoTimerUs;
 
 
 
-pub type DoorPin = A0<Input<PullUp>>;
+pub type DoorPin = G5<Input<PullUp>>;
 
 //
 pub type HeaterSpi = Spi<
@@ -34,9 +34,9 @@ pub fn setup_hw(
 
     let mut syscfg = device.SYSCFG.constrain();
 
-    let pins = all_pins(device.GPIOA, device.GPIOB, device.GPIOC, device.GPIOD);
+    let pins = pins(device.GPIOA, device.GPIOB, device.GPIOC, device.GPIOD);
 
-    let mut pin = pins.a0.into_pull_up_input();
+    let mut pin = pins.g5.into_pull_up_input();
     pin.enable_interrupt(&mut device.EXTI);
     pin.make_interrupt_source(&mut syscfg);
     pin.trigger_on_edge(&mut device.EXTI, Edge::RisingFalling);
