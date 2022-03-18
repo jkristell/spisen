@@ -5,22 +5,22 @@ version = "0.0.1"
 edition = "2018"
 
 [features]
-default = ["nucleo"]
+default = ["feather"]
 nucleo = ["stm32f4xx-hal/stm32f401"]
-feather = ["stm32f4xx-hal/stm32f405"]
+feather = ["stm32f4xx-hal/stm32f405", "feather-f405"]
 
 [dependencies]
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
 embedded-hal = { version = "0.2.7", features = ["unproven"] }
-stm32f4xx-hal = { version = "0.12", features = ["rt", "rtic", "stm32f401", "usb_fs"] }
-# Include as a workaround for f4xx-hal defmt
+stm32f4xx-hal = { version = "0.12", features = ["rt", "rtic"] }
 defmt = "0.3.0"
 defmt-rtt = "0.3.0"
 panic-probe = { version = "0.3.0", features = ["print-defmt"] }
 cortex-m-rtic = "1"
 smart-leds = "0.3"
 ws2812-spi = "0.4"
+feather-f405 = { path = "../feather-f405", optional = true}
 
 [profile.dev]
 codegen-units = 1

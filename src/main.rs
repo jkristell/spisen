@@ -12,7 +12,7 @@ mod app {
         timer::{ExtU32, MonoTimerUs},
     };
 
-    use super::{DoorPin, HeaterSpi, MonotonicTim, UsDelay};
+    use super::{DoorPin, HeaterSpi, MonotonicTim, };
 
     #[monotonic(binds = TIM2, default = true)]
     type MicrosecMono = MonoTimerUs<MonotonicTim>;
@@ -25,7 +25,6 @@ mod app {
 
     #[local]
     struct Local {
-        delay: UsDelay,
     }
 
     #[init]
@@ -33,7 +32,7 @@ mod app {
         // Device specific peripherals
         let device = ctx.device;
 
-        let (pin, spi, delay, mono) = super::setup_hw(device);
+        let (pin, spi, mono) = super::setup_hw(device);
 
         // Setup the Oven door
         let door = OvenDoor::new(pin);
@@ -47,7 +46,7 @@ mod app {
 
         (
             Resources { door, heater },
-            Local { delay },
+            Local { },
             init::Monotonics(mono),
         )
     }
@@ -86,7 +85,7 @@ mod app {
             door::State::Closed => {
                 heater.lock(|h| h.enable(true));
 
-                //run_oven::spawn()
+                run_oven::spawn().ok();
             },
         };
 
@@ -94,14 +93,15 @@ mod app {
     }
 
     #[task(
-        local = [delay],
         shared = [heater]
     )]
     fn run_oven(ctx: run_oven::Context) {
         let mut heater = ctx.shared.heater;
 
-        heater.lock(|h| h.rainbow());
+        let done = heater.lock(|h| h.rainbow());
 
-        run_oven::spawn_after(10.millis());
+        if !done {
+            run_oven::spawn_after(10.millis()).ok();
+        }
     }
 }

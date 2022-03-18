@@ -1,4 +1,4 @@
-use embedded_hal::{blocking::delay::DelayMs, spi::FullDuplex};
+use embedded_hal::{spi::FullDuplex};
 use smart_leds::{
     gamma,
     hsv::{hsv2rgb, Hsv},
@@ -30,7 +30,7 @@ where
         self.run = enable;
     }
 
-    pub fn rainbow(&mut self) {
+    pub fn rainbow(&mut self) -> bool {
         const LED_NUM: usize = 8;
         let mut data = [RGB8::default(); LED_NUM];
 
@@ -38,7 +38,7 @@ where
 
             self.ws.write(gamma(data.iter().cloned())).unwrap();
 
-            return;
+            return true;
         }
 
         let j = self.step;
@@ -64,26 +64,7 @@ where
         }
         self.ws.write(gamma(data.iter().cloned())).unwrap();
 
-        /*
-        loop {
-            for j in 0..256 {
-                for i in 0..LED_NUM {
-                    // rainbow cycle using HSV, where hue goes through all colors in circle
-                    // value sets the brightness
-                    let hsv = Hsv {
-                        hue: ((i * 3 + j) % 256) as u8,
-                        sat: 255,
-                        val: 100,
-                    };
-
-                    data[i] = hsv2rgb(hsv);
-                }
-                // before writing, apply gamma correction for nicer rainbow
-                self.ws.write(gamma(data.iter().cloned())).unwrap();
-                delay.delay_ms(10u8);
-            }
-        }
-
-         */
+        false
     }
+
 }
