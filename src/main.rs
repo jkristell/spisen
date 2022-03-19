@@ -54,11 +54,13 @@ mod app {
     #[idle]
     fn idle(_ctx: idle::Context) -> ! {
         // The idle loop
-        loop {}
+        loop {
+            rtic::export::wfi();
+        }
     }
 
     #[task(
-        binds = EXTI0,
+        binds = EXTI9_5,
         shared = [door]
     )]
     fn on_door_event(ctx: on_door_event::Context) {
